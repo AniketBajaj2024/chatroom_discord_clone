@@ -1,0 +1,141 @@
+
+//Whenever we update schema we need to run this command :
+
+// npx prisma generate
+// npx prisma db push
+
+
+
+
+
+
+
+// This section specifies the code generator for Prisma. It's set to generate a Prisma Client in JavaScript.
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Here, you define a datasource named db that 
+// connects to a MySQL database. The database URL is
+// retrieved from the environment variables, and relationMode 
+// is set to "prisma," indicating that Prisma should handle relations.
+datasource db {
+  provider = "mysql"
+  url = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+
+// profile is a model representing a user profile.
+// id: Unique identifier for the profile.
+// userId: Unique user identifier.
+// name: Name of the user.
+// imageUrl: URL for the user's image, using @db.Text for potentially large data.
+// email: Email address of the user.
+// servers: A relation to the Server model, indicating that a profile can be associated with multiple servers.
+// createdAt and updatedAt: Timestamps for when the profile is created or updated.
+model Profile {
+  id String @id @default(uuid())
+  userId String @unique
+  name String
+  imageUrl String @db.Text
+  email String @db.Text
+
+
+  servers Server[]
+  members Member[]
+    channels Channel[]
+  // servers Server
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Server is a model representing a server.
+// id: Unique identifier for the server.
+// name: Name of the server.
+// imageUrl: URL for the server's image, using @db.Text for potentially large data.
+// inviteCode: Code for inviting users to the server.
+// profileId: Foreign key linking the server to a profile.
+// profile: A relation to the profile model, indicating that a server belongs to a profile.
+// createdAt and updatedAt: Timestamps for when the server is created or updated.
+// @@index([profileId]): This creates an index on the profileId field for optimized querying.
+// The use of @db.Text for imageUrl in both models indicates that the corresponding database columns should be of a text-based type, suitable for storing potentially large amounts of textual data, such as URLs.
+model Server {
+  // db.text isliye use kiya bcs image ka url bht bda hoskta hai 
+  id String @id @default(uuid())
+  name String
+  imageUrl String @db.Text
+  inviteCode String @db.Text
+
+  profileId String
+  profile Profile @relation(fields: [profileId] , references : [id] , onDelete : Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members Member[]
+  channels Channel[]
+
+
+  @@index([profileId])
+}
+  
+
+enum MemberRole{
+  ADMIN
+  MODERATOR
+  GUEST
+
+}
+
+model Member {
+  id String @id @default(uuid())
+  role MemberRole @default(GUEST)
+
+  // CONNECTING MEMBER TO THE PROFILE
+
+  profileId String
+  // we need to make an array of Member to store theese data in profile
+  profile Profile @relation(fields: [profileId] , references: [id] , onDelete: Cascade)
+
+
+  serverId String
+// In the Prisma schema language, the @relation directive is used to establish relationships between models. The relation directive is typically used when you want to define an association between two models, specifying how they are related in the database.
+  server Server @relation(fields: [serverId] , references: [id] , onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([profileId])
+  @@index([serverId])
+}
+
+// @@index([])
+// This line creates an index on the profileId field in the Server model. In the context of a database, an index on a column allows the database management system to quickly locate and access the rows of the table based on the values stored in that column.
+
+
+enum chanelType {
+  TEXT
+  AUDIO
+  VIDEO
+}
+
+
+model Channel {
+  id String @default(uuid())
+  name String
+  type chanelType @default(TEXT)
+  profileId String
+  profile Profile @relation(fields: [profileId] , references: [id] , onDelete: Cascade)
+
+  serverId String
+  server Server @relation(fields: [serverId] , references: [id] , onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
+  @@id([profileId])
+  @@index([serverId])
+
+}
